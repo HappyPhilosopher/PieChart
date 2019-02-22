@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        canvas {
+            display: block;
+            border: 1px solid #000;
+            margin: 100px auto;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="my_canvas" width="600" height="600"></canvas>
+
+    <script>
+        class PieChart {
+            constructor(selector) {
+                this.ctx = document.querySelector(selector).getContext('2d');
+                // canvas 宽和高
+                this.canvasWidth = this.ctx.canvas.width;
+                this.canvasHeight = this.ctx.canvas.height;
+                // 饼图参数
+                this.x0 = this.canvasWidth / 2;
+                this.y0 = this.canvasHeight / 2;
+                this.radius = 200;
+                this.startAngle = 0;
+                this.endAngle = 0;
+                // 描述文字伸出线长度
+                this.outLength = 30;
+            }
+
+            init(data) {
+                this.drawPie(data);
+            }
+
+            drawPie(data) {
+                data.forEach(item => {
+                    let scale = item.num / this.getTotalNum(data);  // 每一个数据占比
+                    let persentage = Number(scale * 100).toFixed(2) + '%';
+                    let anyAngle = Math.PI * 2 * scale;  // 每一个数据占总人数百分比转化为弧度
+                    this.endAngle = anyAngle + this.startAngle;  // endAngle 赋值
+                    
+                    // 绘制饼图
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.x0, this.y0);
+                    this.ctx.arc(this.x0, this.y0, this.radius, this.startAngle, this.endAngle);
+                    this.ctx.closePath();
+                    this.ctx.fillStyle = this.getRandomColor();
+                    this.ctx.fill();
+
+                    // 绘制伸出线
+                    this.drawTitle(anyAngle / 2 + this.startAngle, item.title, persentage);
+
+                    this.startAngle = this.endAngle;  // 每一次循环最后为 startAngle 赋值，开始的角度 = 上一次绘图终点的角度
+                });
+            }
+
+            drawTitle(angle, text, persentage) {
+                let hypotenuseLength = this.radius + this.outLength;  // 三角形斜边长度
+                // 伸出线终点坐标
+                let outX = this.x0 + hypotenuseLength * Math.cos(angle);
+                let outY = this.y0 + hypotenuseLength * Math.sin(angle);
+                // 伸出线与饼图相交点坐标
+                let crossX = this.x0 + this.radius * Math.cos(angle);
+                let crossY = this.y0 + this.radius * Math.sin(angle);
+                // 文字宽度
+                let fontWidth = 0;
+                // 文字下划线终点坐标
+                let underlineX = 0;
+                let underlineY = outY;
+                // 文字上下间隔
+                let paddingSpace = 2;
+
+                // 绘制文字及下划线
+                this.ctx.font = '16px Arial';
+                fontWidth = this.ctx.measureText(text).width;
+                // 判断文字左右对齐方向和下划线延伸方向
+                if (outX < this.x0) {
+                    this.ctx.textAlign = 'right';
+                    underlineX = outX - fontWidth;
+                } else {
+                    this.ctx.textAlign = 'left';
+                    underlineX = outX + fontWidth;
+                }
+                this.ctx.textBaseline = 'bottom';
+
+                // 绘制伸出线
+                this.ctx.beginPath();
+                this.ctx.moveTo(crossX, crossY);
+                this.ctx.lineTo(outX, outY);
+                this.ctx.lineTo(underlineX, underlineY);
+                this.ctx.strokeStyle = '#222';
+                this.ctx.stroke();
+
+                // 绘制文字
+                this.ctx.fillStyle = '#222';
+                this.ctx.fillText(text, outX, outY - paddingSpace);
+
+                // 绘制百分比
+                this.ctx.textBaseline = 'top';
+                this.ctx.fillText(persentage, outX, outY + paddingSpace);
+
+            }
+
+            // 获取随机颜色
+            getRandomColor() {
+                let r = Math.floor(Math.random() * 256);
+                let g = Math.floor(Math.random() * 256);
+                let b = Math.floor(Math.random() * 256);
+                return `rgb(${r}, ${g}, ${b})`;
+            }
+
+            // 获取数据总人数
+            getTotalNum(data) {
+                let totalNum = 0;
+                data.forEach(item => {
+                    totalNum += item.num;
+                });
+                return totalNum;
+            }
+        }
+
+
+        let xml = new XMLHttpRequest();
+        xml.open('GET', './resource/data.json');
+        xml.send(null);
+        xml.onreadystatechange = function() {
+            if (this.readyState === 4) {
+                if (this.status === 200) {
+                    let response = JSON.parse(this.responseText);
+                    let data = response.data;
+                    let pieChart = new PieChart('#my_canvas');
+                    pieChart.init(data);
+                } else {
+                    console.log('获取资源失败！');
+                }
+            }
+        };
+    </script>
+</body>
+</html>
